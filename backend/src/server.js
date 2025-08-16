@@ -27,12 +27,13 @@ io.on("connection", (socket) => {
     rooms[roomId] = {
       creator: socket.id,
       players: { [socket.id]: { username, score: 0 } },
-      board: [],
-      started: false,
+      board: generateBoard(),
+      started: true,
     };
 
     socket.join(roomId);
     io.to(roomId).emit("game-state", rooms[roomId]);
+    io.to(roomId).emit("leaderboard", Object.values(rooms[roomId].players));
   });
 
   socket.on("join-match", ({ username, roomId }) => {
@@ -45,6 +46,7 @@ io.on("connection", (socket) => {
     room.players[socket.id] = { username, score: 0 };
     socket.join(roomId);
     io.to(roomId).emit("game-state", room);
+    io.to(roomId).emit("leaderboard", Object.values(room.players));
   });
 
   socket.on("start-match", ({ roomId }) => {
@@ -53,8 +55,8 @@ io.on("connection", (socket) => {
 
     room.board = generateBoard();
     room.started = true;
-
     io.to(roomId).emit("game-state", room);
+    io.to(roomId).emit("leaderboard", Object.values(room.players));
   });
 
   socket.on("flip-card", ({ roomId, cardId }) => {
@@ -66,14 +68,11 @@ io.on("connection", (socket) => {
 
     card.revealed = true;
 
-    // Broadcast instantly
     io.to(roomId).emit("game-state", room);
 
     const revealed = room.board.filter((c) => c.revealed && !c.matched);
-
     if (revealed.length === 2) {
       const [c1, c2] = revealed;
-
       if (c1.icon === c2.icon) {
         c1.matched = c2.matched = true;
         room.players[socket.id].score += 1;

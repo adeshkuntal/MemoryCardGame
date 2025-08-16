@@ -37,8 +37,12 @@ export default function Lobby({ username, setUsername, roomId, setRoomId, onJoin
         className="p-2 border rounded"
       />
       <div className="flex gap-2">
-        <button onClick={handleCreate} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start New Match</button>
-        <button onClick={handleJoin} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Join Match</button>
+        <button onClick={handleCreate} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+          Start New Match
+        </button>
+        <button onClick={handleJoin} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+          Join Match
+        </button>
       </div>
     </div>
   );

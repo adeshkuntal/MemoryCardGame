@@ -1,22 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { socket } from "./utils/socket";
 import Lobby from "./components/Lobby";
 import GameBoard from "./components/GameBoard";
-import Leaderboard from "./components/Leaderboard";
 
 export default function App() {
   const [username, setUsername] = useState("");
   const [roomId, setRoomId] = useState("");
   const [joined, setJoined] = useState(false);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [isCreator, setIsCreator] = useState(false);
-
-  useEffect(() => {
-    socket.on("leaderboard", setLeaderboard);
-    return () => {
-      socket.off("leaderboard");
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 p-6">
@@ -32,11 +23,8 @@ export default function App() {
               setCreator={setIsCreator}
             />
           ) : (
-            <GameBoard username={username} roomId={roomId} />
+            <GameBoard username={username} roomId={roomId} isCreator={isCreator} />
           )}
-        </div>
-        <div className="bg-white rounded-2xl shadow p-4">
-          <Leaderboard leaderboard={leaderboard} />
         </div>
       </div>
     </div>
