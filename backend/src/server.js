@@ -37,8 +37,12 @@ io.on("connection", (socket) => {
     };
 
     socket.join(roomId);
-    io.to(roomId).emit("game-state", rooms[roomId]);
-    io.to(roomId).emit("leaderboard", Object.values(rooms[roomId].players));
+    io.to(roomId).emit("game-state", {
+      board: rooms[roomId].board,
+      players: Object.entries(rooms[roomId].players).map(([id, p]) => ({ ...p, id })),
+      currentTurn: rooms[roomId].currentTurn,
+      winner: rooms[roomId].winner
+    });
   });
 
   socket.on("join-match", ({ username, roomId }) => {
@@ -51,8 +55,13 @@ io.on("connection", (socket) => {
     room.players[socket.id] = { username, score: 0 };
     room.turnOrder.push(socket.id);
     socket.join(roomId);
-    io.to(roomId).emit("game-state", room);
-    io.to(roomId).emit("leaderboard", Object.values(room.players));
+
+    io.to(roomId).emit("game-state", {
+      board: room.board,
+      players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+      currentTurn: room.currentTurn,
+      winner: room.winner
+    });
   });
 
   socket.on("flip-card", ({ roomId, cardId }) => {
@@ -63,7 +72,12 @@ io.on("connection", (socket) => {
     if (!card || card.revealed) return;
 
     card.revealed = true;
-    io.to(roomId).emit("game-state", room);
+    io.to(roomId).emit("game-state", {
+      board: room.board,
+      players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+      currentTurn: room.currentTurn,
+      winner: room.winner
+    });
 
     const revealed = room.board.filter((c) => c.revealed && !c.matched);
     if (revealed.length === 2) {
@@ -71,24 +85,37 @@ io.on("connection", (socket) => {
       if (c1.icon === c2.icon) {
         c1.matched = c2.matched = true;
         room.players[socket.id].score += 1;
-        io.to(roomId).emit("leaderboard", Object.values(room.players));
+        io.to(roomId).emit("game-state", {
+          board: room.board,
+          players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+          currentTurn: room.currentTurn,
+          winner: room.winner
+        });
 
         if (room.board.every((c) => c.matched)) {
-          const winner = Object.values(room.players).reduce((a,b) => a.score > b.score ? a : b);
-          room.winner = winner.username;
-          io.to(roomId).emit("game-state", room);
+          const winnerPlayer = Object.values(room.players).reduce((a, b) => a.score > b.score ? a : b);
+          room.winner = winnerPlayer.username;
+          io.to(roomId).emit("game-state", {
+            board: room.board,
+            players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+            currentTurn: room.currentTurn,
+            winner: room.winner
+          });
         }
       } else {
         setTimeout(() => {
           c1.revealed = false;
           c2.revealed = false;
-          io.to(roomId).emit("game-state", room);
+          // Switch turn
+          const idx = room.turnOrder.indexOf(room.currentTurn);
+          room.currentTurn = room.turnOrder[(idx + 1) % room.turnOrder.length];
+          io.to(roomId).emit("game-state", {
+            board: room.board,
+            players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+            currentTurn: room.currentTurn,
+            winner: room.winner
+          });
         }, 1000);
-
-        // next player's turn
-        const idx = room.turnOrder.indexOf(room.currentTurn);
-        room.currentTurn = room.turnOrder[(idx + 1) % room.turnOrder.length];
-        io.to(roomId).emit("game-state", room);
       }
     }
   });
@@ -103,8 +130,12 @@ io.on("connection", (socket) => {
     room.currentTurn = room.turnOrder[0];
     room.winner = null;
 
-    io.to(roomId).emit("game-state", room);
-    io.to(roomId).emit("leaderboard", Object.values(room.players));
+    io.to(roomId).emit("game-state", {
+      board: room.board,
+      players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+      currentTurn: room.currentTurn,
+      winner: room.winner
+    });
   });
 
   socket.on("disconnect", () => {
@@ -113,7 +144,14 @@ io.on("connection", (socket) => {
         delete rooms[roomId].players[socket.id];
         rooms[roomId].turnOrder = rooms[roomId].turnOrder.filter(id => id !== socket.id);
         if (rooms[roomId].turnOrder.length === 0) delete rooms[roomId];
-        else io.to(roomId).emit("game-state", rooms[roomId]);
+        else {
+          io.to(roomId).emit("game-state", {
+            board: rooms[roomId].board,
+            players: Object.entries(rooms[roomId].players).map(([id, p]) => ({ ...p, id })),
+            currentTurn: rooms[roomId].currentTurn,
+            winner: rooms[roomId].winner
+          });
+        }
       }
     }
   });

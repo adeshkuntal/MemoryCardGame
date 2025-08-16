@@ -10,23 +10,26 @@ export default function GameBoard({ username, roomId, isCreator, onHome }) {
   useEffect(() => {
     socket.on("game-state", (room) => {
       setBoard([...room.board]);
-      setCurrentTurn(room.turnOrder ? room.turnOrder.find(id => id === room.currentTurn) : "");
+      setPlayers(room.players);
+      setCurrentTurn(room.currentTurn);
       setWinner(room.winner || null);
     });
 
-    socket.on("leaderboard", (list) => setPlayers(list));
-
     return () => {
       socket.off("game-state");
-      socket.off("leaderboard");
     };
   }, []);
 
-  const handleFlip = (cardId) => socket.emit("flip-card", { roomId, cardId });
-  const handleStart = () => socket.emit("start-match", { roomId });
-  const handleRestart = () => socket.emit("restart-match", { roomId });
+  const handleFlip = (cardId) => {
+    if (!winner && players.find(p => p.id === currentTurn)?.username === username)
+      socket.emit("flip-card", { roomId, cardId });
+  };
 
-  const currentPlayerName = players.find(p => p.username && p.username === currentTurn)?.username;
+  const handleRestart = () => {
+    socket.emit("restart-match", { roomId });
+  };
+
+  const currentPlayerName = players.find(p => p.id === currentTurn)?.username;
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -34,28 +37,23 @@ export default function GameBoard({ username, roomId, isCreator, onHome }) {
         Home 🏠
       </button>
 
-      {isCreator && (
-        <div className="flex gap-2 mb-4">
-          <button onClick={handleStart} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-            Start Match 🏁
-          </button>
-          <button onClick={handleRestart} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
-            Restart Match 🔄
-          </button>
-        </div>
-      )}
-
-      {winner && (
-        <div className="text-4xl font-bold text-center text-purple-600">
-          🏆 {winner} Wins!
-        </div>
+      {isCreator && !winner && (
+        <button onClick={handleRestart} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mb-2">
+          Restart Match 🔄
+        </button>
       )}
 
       {!winner && currentPlayerName && (
         <div className="mb-2 text-lg font-semibold text-indigo-700">{currentPlayerName}'s Turn</div>
       )}
 
-      <div className="grid grid-cols-4 gap-4">
+      {winner && (
+        <div className="text-4xl font-bold text-center text-purple-600 mb-2">
+          🏆 {winner} Wins!
+        </div>
+      )}
+
+      <div className={`grid gap-4 ${board.length <= 4 ? "grid-cols-2" : board.length <= 8 ? "grid-cols-4" : "grid-cols-4"}`}>
         {board.map((card) => (
           <div
             key={card.id}
