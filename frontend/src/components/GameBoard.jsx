@@ -7,6 +7,7 @@ export default function GameBoard({ username, roomId, isCreator, onHome }) {
   const [players, setPlayers] = useState([]);
   const [currentTurn, setCurrentTurn] = useState("");
   const [winner, setWinner] = useState(null);
+  const [flippedCards, setFlippedCards] = useState([]);
 
   useEffect(() => {
     socket.on("game-state", (room) => {
@@ -14,18 +15,29 @@ export default function GameBoard({ username, roomId, isCreator, onHome }) {
       setPlayers(room.players);
       setCurrentTurn(room.currentTurn);
       setWinner(room.winner || null);
+      // Reset flipped cards when game state updates
+      setFlippedCards([]);
+    });
+
+    socket.on("card-flipped", ({ cardId }) => {
+      setFlippedCards(prev => [...prev, cardId]);
     });
 
     return () => {
       socket.off("game-state");
+      socket.off("card-flipped");
     };
   }, []);
 
   const handleFlip = (cardId) => {
-    if (!winner && players.find(p => p.id === currentTurn)?.username === username)
+    if (!winner && 
+        players.find(p => p.id === currentTurn)?.username === username &&
+        !board.find(c => c.id === cardId)?.matched &&
+        flippedCards.length < 2) {
       socket.emit("flip-card", { roomId, cardId });
+    }
   };
-
+  
   const handleRestart = () => {
     socket.emit("restart-match", { roomId });
   };
