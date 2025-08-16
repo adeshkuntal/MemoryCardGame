@@ -9,6 +9,7 @@ export default function App() {
   const [roomId, setRoomId] = useState("");
   const [joined, setJoined] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
     socket.on("leaderboard", setLeaderboard);
@@ -28,6 +29,7 @@ export default function App() {
               roomId={roomId}
               setRoomId={setRoomId}
               onJoined={() => setJoined(true)}
+              setCreator={setIsCreator}
             />
           ) : (
             <GameBoard username={username} roomId={roomId} />
