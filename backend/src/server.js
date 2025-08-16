@@ -21,7 +21,7 @@ function generateBoard(cardCount = 12) {
     .map((icon, i) => ({ 
       id: i, 
       icon, 
-      revealed: false, 
+      revealed: false,  // All cards start hidden
       matched: false 
     }));
 }
@@ -33,7 +33,6 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Validate card count (must be even and within range)
     const validCardCount = Math.max(4, Math.min(16, Math.floor(cardCount / 2) * 2));
 
     rooms[roomId] = {
@@ -45,7 +44,7 @@ io.on("connection", (socket) => {
       currentTurn: socket.id,
       cardCount: validCardCount,
       winner: null,
-      lastFlipped: null
+      revealedCards: []  // Track currently revealed cards
     };
 
     socket.join(roomId);
@@ -59,10 +58,23 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Ensure new player sees the same state as existing players
     room.players[socket.id] = { username, score: 0 };
     room.turnOrder.push(socket.id);
     socket.join(roomId);
 
+    // Send the current game state to the new player
+    socket.emit("initial-state", {
+      board: room.board.map(card => ({
+        ...card,
+        revealed: card.matched || room.revealedCards.includes(card.id)
+      })),
+      players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
+      currentTurn: room.currentTurn,
+      winner: room.winner
+    });
+
+    // Notify all players about the new player
     emitGameState(roomId);
   });
 
@@ -75,22 +87,24 @@ io.on("connection", (socket) => {
 
     // Flip the card
     card.revealed = true;
+    room.revealedCards.push(card.id);
     emitGameState(roomId);
 
-    // Check for match logic
-    const revealedCards = room.board.filter((c) => c.revealed && !c.matched);
+    // Check for matches
+    const revealed = room.board.filter(c => c.revealed && !c.matched);
     
-    if (revealedCards.length === 2) {
-      const [firstCard, secondCard] = revealedCards;
+    if (revealed.length === 2) {
+      const [firstCard, secondCard] = revealed;
       
       if (firstCard.icon === secondCard.icon) {
         // Match found
         firstCard.matched = true;
         secondCard.matched = true;
         room.players[socket.id].score += 1;
+        room.revealedCards = room.revealedCards.filter(id => id !== firstCard.id && id !== secondCard.id);
         
         // Check for game completion
-        if (room.board.every((c) => c.matched)) {
+        if (room.board.every(c => c.matched)) {
           const winner = getWinner(room.players);
           room.winner = winner;
           room.started = false;
@@ -102,6 +116,7 @@ io.on("connection", (socket) => {
         setTimeout(() => {
           firstCard.revealed = false;
           secondCard.revealed = false;
+          room.revealedCards = room.revealedCards.filter(id => id !== firstCard.id && id !== secondCard.id);
           nextTurn(room);
           emitGameState(roomId);
         }, 1000);
@@ -118,7 +133,7 @@ io.on("connection", (socket) => {
     room.started = true;
     room.currentTurn = room.turnOrder[0];
     room.winner = null;
-    room.lastFlipped = null;
+    room.revealedCards = [];
 
     emitGameState(roomId);
   });
@@ -133,7 +148,11 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     io.to(roomId).emit("game-state", {
-      board: room.board,
+      board: room.board.map(card => ({
+        ...card,
+        // Only show matched cards or cards revealed in current turn
+        revealed: card.matched || room.revealedCards.includes(card.id)
+      })),
       players: Object.entries(room.players).map(([id, p]) => ({ ...p, id })),
       currentTurn: room.currentTurn,
       winner: room.winner
@@ -163,7 +182,6 @@ io.on("connection", (socket) => {
         if (room.turnOrder.length === 0) {
           delete rooms[roomId];
         } else {
-          // If disconnected player was current turn, move to next player
           if (room.currentTurn === socketId) {
             room.currentTurn = room.turnOrder[0];
           }
