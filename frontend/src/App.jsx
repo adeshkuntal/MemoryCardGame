@@ -16,9 +16,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-4 md:p-8">
-      <main className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 p-6">
+      <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-[2fr_1fr]">
+        <div className="bg-white rounded-2xl shadow p-4">
           {!joined ? (
             <Lobby
               username={username}
@@ -29,15 +29,10 @@ export default function App() {
               setCreator={setIsCreator}
             />
           ) : (
-            <GameBoard 
-              username={username} 
-              roomId={roomId} 
-              isCreator={isCreator} 
-              onHome={handleHome} 
-            />
+            <GameBoard username={username} roomId={roomId} isCreator={isCreator} onHome={handleHome} />
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
