@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { socket } from "./utils/socket";
 import Lobby from "./components/Lobby";
 import GameBoard from "./components/GameBoard";
 
@@ -8,6 +7,13 @@ export default function App() {
   const [roomId, setRoomId] = useState("");
   const [joined, setJoined] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+
+  const handleHome = () => {
+    setJoined(false);
+    setUsername("");
+    setRoomId("");
+    setIsCreator(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 p-6">
@@ -23,7 +29,7 @@ export default function App() {
               setCreator={setIsCreator}
             />
           ) : (
-            <GameBoard username={username} roomId={roomId} isCreator={isCreator} />
+            <GameBoard username={username} roomId={roomId} isCreator={isCreator} onHome={handleHome} />
           )}
         </div>
       </div>
